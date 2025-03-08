@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الرصيد وسجل المعاملات</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            direction: rtl;
+        }
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            width: 90%;
+        }
+        .transactions {
+            text-align: right;
+        }
+        .transactions ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .transactions li {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .deposit {
+            color: green;
+            font-weight: bold;
+        }
+        .withdrawal {
+            color: red;
+            font-weight: bold;
+        }
+        .balance {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>الرصيد وسجل المعاملات</h2>
+    <input type="text" id="userId" placeholder="أدخل معرف المستخدم">
+    <button onclick="getUserData()">عرض التفاصيل</button>
+    
+    <h3 class="balance">الرصيد: <span id="balance">-</span> جنيه</h3>
+
+    <h3>المعاملات المالية</h3>
+    <div class="transactions">
+        <ul id="transactions"></ul>
+    </div>
+</div>
+
+<script>
+async function getUserData() {
+    const userId = document.getElementById("userId").value;
+    if (!userId) {
+        alert("يرجى إدخال معرف المستخدم!");
+        return;
+    }
+
+    // إرسال طلب JSON-RPC لجلب المعاملات والرصيد
+    const response = await fetch("http://localhost:3001/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "getTransactions",
+            params: { userId },
+            id: 1
+        })
+    });
+
+    const data = await response.json();
+    const transactionsList = document.getElementById("transactions");
+    const balanceElement = document.getElementById("balance");
+    transactionsList.innerHTML = "";
+
+    if (Array.isArray(data.result)) {
+        let balance = 0;
+
+        data.result.forEach(tx => {
+            const li = document.createElement("li");
+            li.innerHTML = `<span class="${tx.transactionType}">${tx.transactionType === "deposite" ? "إيداع" : "سحب"}:</span> 
+                            ${tx.amount} جنيه - ${new Date(tx.timestamp).toLocaleString()}`;
+            transactionsList.appendChild(li);
+
+            // حساب الرصيد المتبقي
+            if (tx.transactionType === "deposite") {
+                balance += tx.amount;
+            } else {
+                balance -= tx.amount;
+            }
+        });
+
+        balanceElement.textContent = balance;
+    } else {
+        balanceElement.textContent = "-";
+        transactionsList.innerHTML = "<li>❌ لا توجد معاملات أو المستخدم غير موجود.</li>";
+    }
+}
+</script>
+
+</body>
+</html>
